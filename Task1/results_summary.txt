@@ -1,0 +1,78 @@
+#    HEAT SINK THERMAL MODEL - KEY RESULTS & SCORES
+
+
+# BASELINE CHECK (matches original script, TDP=150W, V_air=1m/s, k_tim=4 W/mK)
+R_total = 0.3692 degC/W
+T_j     = 80.38 degC
+
+
+# PARAMETER SWEEP RANGE
+
+TDP     : 30 - 250 W        (25 points)
+V_air   : 0.5 - 15 m/s      (30 points)
+k_tim   : 1 - 12 W/m.K      (12 points)
+Total rows generated: 9000
+Flow regime: 100% laminar (Re never exceeds ~1100 in this sweep, stays below
+the 2300 laminar/turbulent threshold across the full V_air range)
+
+Output ranges across the sweep:
+R_total : 0.16 - 0.44 degC/W
+T_j     : 29 - 107 degC
+
+
+# ML MODEL ACCURACY (80/20 train-test split, random_state=42)
+
+Target: R_total
+  Model                              MAE          RMSE         R2
+  Linear Regression (poly deg2)      0.007733     0.010973     0.8867
+  Random Forest                      ~0.0000      ~0.0000      1.0000
+
+Target: T_j
+  Model                              MAE          RMSE         R2
+  Linear Regression (poly deg2)      1.3393       2.0307       0.9905
+  Random Forest                      0.1166       0.3304       0.9997
+
+
+
+# EXTRAPOLATION STRESS TEST (train on TDP < 200W, test on TDP >= 200W)
+
+Target      MAE          RMSE         R2
+R_total     ~0.0000      ~0.0000      1.0000    (expected - R_total doesn't
+                                               depend on TDP at all)
+T_j         9.6953       10.8540      -0.5432    (model cannot extrapolate
+                                               beyond its trained range)
+
+
+
+
+# CORRELATION MATRIX (Pearson r)
+
+              TDP        V_air      k_tim      R_total    T_j
+TDP           1.000      0.000      0.000      0.000      0.970
+V_air         0.000      1.000      0.000     -0.796     -0.175
+k_tim         0.000      0.000      1.000     -0.259     -0.057
+R_total       0.000     -0.796     -0.259      1.000      0.220
+T_j           0.970     -0.175     -0.057      0.220      1.000
+
+
+# RANDOM FOREST FEATURE IMPORTANCE (sensitivity analysis)
+
+Influence on R_total:
+  V_air   0.8899
+  k_tim   0.1101
+  TDP     0.0000
+
+Influence on T_j:
+  TDP     0.9416
+  V_air   0.0522
+  k_tim   0.0062
+
+
+
+
+# Final conclusion:
+
+R_total is driven almost entirely by V_air, with a smaller contribution
+from k_tim, and essentially zero dependence on TDP.
+T_j is driven almost entirely by TDP, since T_j = T_ambient + TDP * R_total
+and R_total varies over a much narrower range than TDP does.
